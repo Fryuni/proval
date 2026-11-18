@@ -115,6 +115,10 @@ export type GitHubRepositoryResponse = {
 export type RepositoryUpdateInput = Partial<
     Omit<RepositoryInsert, "webhookSecret" | "webhookSigningToken" | "createdAt" | "updatedAt">
 >;
+export type RepositoryModelUpdateInput = Pick<Repository, "modelName" | "reasoningEffort"> & {
+    repositoryIdList: number[];
+    modelProviderId: number;
+};
 export type ModelProviderUpdateInput = Partial<
     Pick<
         ModelProvider,

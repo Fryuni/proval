@@ -2,7 +2,7 @@
     import ResourceCard from "$lib/components/molecule/ResourceCard.svelte";
     import Badge from "$lib/components/atom/Badge.svelte";
     import Button from "$lib/components/atom/Button.svelte";
-    import { PlusIcon } from "phosphor-svelte";
+    import { CpuIcon, PlusIcon } from "phosphor-svelte";
     import { replyOptionBadge } from "$lib/utils/label";
     import type { PageProps } from "./$types";
     import DefaultLayout from "$lib/components/layout/DefaultLayout.svelte";
@@ -12,10 +12,18 @@
 </script>
 
 {#snippet addRepositoryAction()}
-    <Button href="/repository/create" size="sm" class="gap-1.5 text-foreground hover:text-foreground/70">
-        <PlusIcon class="size-4" />
-        Add Repository
-    </Button>
+    <div class="flex items-center gap-2">
+        {#if data.repositoryList.length > 0}
+            <Button href="/repository/model" size="sm" class="gap-1.5 text-foreground hover:text-foreground/70">
+                <CpuIcon class="size-4" />
+                Change Model
+            </Button>
+        {/if}
+        <Button href="/repository/create" size="sm" class="gap-1.5 text-foreground hover:text-foreground/70">
+            <PlusIcon class="size-4" />
+            Add Repository
+        </Button>
+    </div>
 {/snippet}
 
 <DefaultLayout title="Repository" actions={addRepositoryAction}>
