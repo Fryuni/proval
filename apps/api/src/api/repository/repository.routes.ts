@@ -4,6 +4,7 @@ import {
     findById as findRepositoryById,
     createRepository,
     updateRepository,
+    updateRepositoryModel,
     updateWebhookSecret,
     updateWebhookSigningToken,
     refreshRepositoryPath,
@@ -16,6 +17,7 @@ repositoryRouter.get("/", findAllRepositoryController);
 repositoryRouter.get("/:id", findRepositoryById);
 repositoryRouter.post("/", createRepository);
 repositoryRouter.put("/:id", updateRepository);
+repositoryRouter.patch("/model", updateRepositoryModel);
 repositoryRouter.patch("/:id/webhook-secret", updateWebhookSecret);
 repositoryRouter.patch("/:id/webhook-signing-token", updateWebhookSigningToken);
 repositoryRouter.post("/:id/refresh-path", refreshRepositoryPath);

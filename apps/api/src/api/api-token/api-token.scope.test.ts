@@ -7,6 +7,7 @@ describe("findRequiredScope", () => {
         expect(findRequiredScope("GET", "/repository")).toBe("repository:read");
         expect(findRequiredScope("POST", "/repository")).toBe("repository:write");
         expect(findRequiredScope("DELETE", "/repository/7")).toBe("repository:write");
+        expect(findRequiredScope("PATCH", "/repository/model")).toBe("repository:write");
     });
 
     test("treats the model provider api key route as a write", () => {

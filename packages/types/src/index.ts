@@ -28,6 +28,7 @@ export type {
     GitHubInstallationResponse,
     GitHubRepositoryResponse,
     RepositoryUpdateInput,
+    RepositoryModelUpdateInput,
     ModelProviderUpdateInput,
     AccessUpdateInput,
     GitHubAppUpdateInput,

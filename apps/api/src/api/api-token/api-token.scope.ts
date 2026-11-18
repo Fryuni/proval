@@ -17,6 +17,7 @@ const scopeRuleList: ScopeRule[] = [
     { method: "GET", pattern: /^\/repository(\/\d+)?$/, scope: "repository:read" },
     { method: "POST", pattern: /^\/repository$/, scope: "repository:write" },
     { method: "PUT", pattern: /^\/repository\/\d+$/, scope: "repository:write" },
+    { method: "PATCH", pattern: /^\/repository\/model$/, scope: "repository:write" },
     {
         method: "PATCH",
         pattern: /^\/repository\/\d+\/(webhook-secret|webhook-signing-token)$/,

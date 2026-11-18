@@ -1,6 +1,6 @@
 import type { Handler } from "hono";
-import { RepositoryService } from "./repository.service.js";
-import type { RepositoryInsert, RepositoryUpdateInput, SecretInput } from "@proval/types";
+import { RepositoryInputError, RepositoryService } from "./repository.service.js";
+import type { RepositoryInsert, RepositoryModelUpdateInput, RepositoryUpdateInput, SecretInput } from "@proval/types";
 import { validateAllowedBranchList } from "../../util/allowed-target-branch.js";
 import { log } from "../../util/log.js";
 import { normalizeWebhookSecret, WebhookCredentialError } from "../../util/webhook-secret.js";
@@ -96,6 +96,20 @@ export const updateRepository: Handler = async (c) => {
         const message = error instanceof Error ? error.message : String(error);
         if (error instanceof WebhookCredentialError || message.startsWith("Custom instructions")) {
             return c.json({ error: message }, 400);
+        }
+        throw error;
+    }
+};
+
+export const updateRepositoryModel: Handler = async (c) => {
+    const repositoryService = new RepositoryService();
+    const body = await c.req.json<RepositoryModelUpdateInput>();
+    try {
+        const updatedCount = await repositoryService.updateModel(body);
+        return c.json({ updatedCount }, 200);
+    } catch (error) {
+        if (error instanceof RepositoryInputError) {
+            return c.json({ error: error.message }, 400);
         }
         throw error;
     }

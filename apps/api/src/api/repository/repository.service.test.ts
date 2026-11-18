@@ -325,3 +325,42 @@ describe("Update GitLab Repository", () => {
         );
     });
 });
+
+describe("Update model for many repositories", () => {
+    const repositoryService = new RepositoryService();
+    const input = { repositoryIdList: [1, 2], modelProviderId: 3, modelName: " new-model ", reasoningEffort: null };
+
+    beforeEach(() => {
+        updateSetMock.mockClear();
+        updateReturningMock.mockClear();
+        selectResultQueue = [];
+    });
+
+    it("sets provider, model and reasoning effort on every listed repository", async () => {
+        selectResultQueue = [[{ id: 3 }]];
+        updateReturningMock.mockResolvedValueOnce([makeRepositoryRow({ id: 1 }), makeRepositoryRow({ id: 2 })]);
+
+        await expect(repositoryService.updateModel({ ...input, reasoningEffort: "high" })).resolves.toBe(2);
+        expect(updateSetMock).toHaveBeenCalledWith({
+            modelProviderId: 3,
+            modelName: "new-model",
+            reasoningEffort: "high",
+        });
+    });
+
+    it("rejects an empty repository list", async () => {
+        await expect(repositoryService.updateModel({ ...input, repositoryIdList: [] })).rejects.toThrow(
+            "Select at least one repository",
+        );
+    });
+
+    it("rejects a blank model name", async () => {
+        await expect(repositoryService.updateModel({ ...input, modelName: "  " })).rejects.toThrow("Model is required");
+    });
+
+    it("rejects an unknown model provider", async () => {
+        selectResultQueue = [[]];
+        await expect(repositoryService.updateModel(input)).rejects.toThrow("Model provider not found");
+        expect(updateSetMock).not.toHaveBeenCalled();
+    });
+});

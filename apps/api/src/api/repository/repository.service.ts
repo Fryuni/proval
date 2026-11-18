@@ -1,5 +1,11 @@
 import db from "../../db/index.js";
-import { activityTable, githubAppTable, githubInstallationTable, repositoryTable } from "@proval/db";
+import {
+    activityTable,
+    githubAppTable,
+    githubInstallationTable,
+    modelProviderTable,
+    repositoryTable,
+} from "@proval/db";
 import { and, count, desc, eq, getTableColumns, inArray, max } from "drizzle-orm";
 import { App } from "@octokit/app";
 import { Octokit } from "@octokit/rest";
@@ -21,10 +27,13 @@ import type {
     Repository,
     RepositoryResponse,
     RepositoryInsert,
+    RepositoryModelUpdateInput,
     RepositoryUpdateInput,
 } from "@proval/types";
 
 const accessService = new GitLabAccessService();
+
+export class RepositoryInputError extends Error {}
 
 export class RepositoryService {
     public async findAll(): Promise<RepositoryResponse[]> {
@@ -276,6 +285,39 @@ export class RepositoryService {
         return this.toResponse(result[0], lastUsedAt[0].lastUsedAt ?? null);
     }
 
+    /** Points every listed repository at one model. Returns how many rows changed. */
+    public async updateModel(data: RepositoryModelUpdateInput): Promise<number> {
+        const { repositoryIdList, modelProviderId } = data;
+        if (
+            !Array.isArray(repositoryIdList) ||
+            repositoryIdList.length === 0 ||
+            !repositoryIdList.every((id) => Number.isSafeInteger(id) && id > 0)
+        ) {
+            throw new RepositoryInputError("Select at least one repository");
+        }
+        if (!Number.isSafeInteger(modelProviderId)) {
+            throw new RepositoryInputError("Model provider is required");
+        }
+        const modelName = typeof data.modelName === "string" ? data.modelName.trim() : "";
+        if (!modelName) {
+            throw new RepositoryInputError("Model is required");
+        }
+        const reasoningEffort = this.normalizeReasoningEffort(data.reasoningEffort);
+        const [modelProvider] = await db
+            .select({ id: modelProviderTable.id })
+            .from(modelProviderTable)
+            .where(eq(modelProviderTable.id, modelProviderId));
+        if (!modelProvider) {
+            throw new RepositoryInputError("Model provider not found");
+        }
+        const result = await db
+            .update(repositoryTable)
+            .set({ modelProviderId, modelName, reasoningEffort })
+            .where(inArray(repositoryTable.id, repositoryIdList))
+            .returning({ id: repositoryTable.id });
+        return result.length;
+    }
+
     public async updateWebhookSecret(repositoryId: number, webhookSecret: string): Promise<void> {
         await db
             .update(repositoryTable)
@@ -449,14 +491,14 @@ export class RepositoryService {
             return null;
         }
         if (typeof reasoningEffort !== "string") {
-            throw new Error("Reasoning effort must be a string");
+            throw new RepositoryInputError("Reasoning effort must be a string");
         }
         const trimmed = reasoningEffort.trim();
         if (!trimmed) {
             return null;
         }
         if (!(reasoningEffortValueList as readonly string[]).includes(trimmed)) {
-            throw new Error("Invalid reasoning effort");
+            throw new RepositoryInputError("Invalid reasoning effort");
         }
         return trimmed as NonNullable<ReasoningEffort>;
     }
