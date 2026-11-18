@@ -4,6 +4,18 @@ This project is called Proval, Self-hosted code review agent.
 
 Below are the direction of Proval. You must consider these descriptions for future compatibility when you write/modify the code for Proval.
 
+## Fork Policy
+
+This repository is a fork. The `upstream` git remote is the original project and `origin` is this fork. We sync with upstream regularly, so every change we make here must be easy to find and carry forward.
+
+Every change made in this fork must have an associated ADR in `docs/adr/`, numbered sequentially (`0001-short-title.md`, `0002-short-title.md` and so on). Write the ADR in the same commit or pull request as the change. Each ADR must state the following.
+
+- What changed and why.
+- Whether the change is tracked upstream. If it is, link the upstream issue or pull request that tracks it, so the fork change can be dropped once upstream ships it.
+- If the change is not tracked upstream to our knowledge, state clearly that the change must be preserved when syncing with upstream.
+
+When syncing with upstream, read `docs/adr/` first. Keep every change marked to be preserved, and retire ADRs whose upstream tracking has landed.
+
 ## About Proval
 
 Proval is a self hosted, privacy focused AI code review agent. It connects to your Git Provider (GitHub, GitLab, Forgejo) via webhooks, runs a lightweight agent loop with your own LLM, and posts reviews and replies on your infrastructure. It is not an IDE copilot replacement. It's like a team's tool for code review with 'set and forget' config.
