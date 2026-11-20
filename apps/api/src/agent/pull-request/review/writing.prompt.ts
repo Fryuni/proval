@@ -147,7 +147,8 @@ export const FOLLOW_UP_EVALUATION_RULE = [
     "The verdict covers the whole pull request at this head, not only this push.",
     "Set isGood false if you posted any create_single_line_comment or create_multi_line_comment.",
     "Set isGood false if the summary lists any Main Issue (lines prefixed with 🚨 or ⚫️), including when inline review mode is off.",
-    "Set isGood false if a Main Issue from a prior Proval review is still unfixed at this head, even when you omitted it from this summary.",
+    "Set isGood false if a Main Issue from any earlier Proval review is still unfixed at this head. Check every earlier Proval summary and inline thread with the comment tools, not only the latest summary.",
+    "List each such still open Main Issue in the summary as one short line under Main Issues, so the next review sees it. This overrides the rule to omit unchanged findings.",
     "Set isGood true only when no Main Issue is open. Additional Notes and Good points alone are fine for isGood true.",
 ].join("\n");
 

@@ -5,7 +5,7 @@ import { dirname, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { MockProvider } from "../../mock/provider.js";
 import type { Workspace } from "./workspace.js";
-import type { GitChangedFile } from "./types.js";
+import type { GitChangedFile, GitProvider } from "./types.js";
 import type { LlmSender, ToolCall } from "../agent/llm/loop.js";
 
 async function git(dir: string, argList: string[]): Promise<string> {
@@ -204,6 +204,10 @@ if (process.env.PROVAL_WORKSPACE_TEST_CHILD !== "1") {
                     // Adopted workspaces receive the target SHA resolved by the manual review runner
                     const version = { headSha, startSha, baseSha: source === "adopted" ? targetSha : startSha };
                     provider.fetchPullRequestVersion = async () => version;
+                    const decisionList: Array<[number, string, boolean]> = [];
+                    (provider as GitProvider).submitPullRequestReviewDecision = async (prIid, sha, isApproved) => {
+                        decisionList.push([prIid, sha, isApproved]);
+                    };
 
                     const { ActivityService } = await import("../api/activity/activity.service.js");
                     const { CommentService } = await import("../api/comment/comment.service.js");
@@ -308,6 +312,7 @@ if (process.env.PROVAL_WORKSPACE_TEST_CHILD !== "1") {
                                 previousHeadSha: isFollowUpReview ? previousSha : null,
                             });
                             expect([...stageSet]).toEqual(["plan", "sub", "writing"]);
+                            expect(decisionList.splice(0)).toEqual([[21, headSha, true]]);
                         }
                     } finally {
                         canceledSpy.mockRestore();

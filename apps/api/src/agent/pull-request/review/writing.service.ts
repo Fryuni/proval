@@ -27,6 +27,8 @@ import {
 import { getFileContentTool, globTool, grepTool, listDirectoryTool } from "../../shared/tool";
 import { ActivityService } from "../../../api/activity/activity.service.js";
 import { generateUserPrompt } from "../../../util/user-prompt.js";
+import { logAgent, logAgentError } from "../../../util/log.js";
+import type { PullRequestVerdict } from "../tool/evaluate-pull-request.js";
 import type { ReviewHandoff } from "./handoff.schema.js";
 
 const PRIOR_SUMMARY_MAX_CHARS = 4000;
@@ -80,8 +82,10 @@ export async function runReviewWritingAgent(
     ].filter(Boolean);
 
     const activityService = new ActivityService();
+    const label = `[PR #${prIid}] Writing`;
+    const verdict: PullRequestVerdict = { isGood: null };
 
-    const result = await runAgentLoop(sender, system, promptPartList.join("\n\n"), `[PR #${prIid}] Writing`, {
+    const result = await runAgentLoop(sender, system, promptPartList.join("\n\n"), label, {
         toolList: [
             usePushScope ? getPushChangedFileListTool(workspace) : null,
             usePushScope ? getPushFileDiffTool(workspace) : null,
@@ -121,13 +125,28 @@ export async function runReviewWritingAgent(
         ],
         requiredToolList: [
             postPullRequestCommentTool(provider, prIid, language, activityId),
-            evaluatePullRequestTool(provider, prIid, headSha, isFollowUpReview),
+            evaluatePullRequestTool(provider, prIid, isFollowUpReview, verdict),
         ],
         endWhenRequiredToolsCalled: true,
         activityId,
         onUsage: (stepUsage) => activityService.addTokenUsage(activityId, stepUsage),
         onEvent,
     });
+
+    // Submit the decision only after the summary it points to is posted. A refused decision (for example on the bot's own pull request) must not fail the review
+    const isSummaryPosted = (result.toolCallCount["post_pull_request_comment"] ?? 0) > 0;
+    if (isSummaryPosted && verdict.isGood !== null && provider.submitPullRequestReviewDecision) {
+        try {
+            await provider.submitPullRequestReviewDecision(prIid, headSha, verdict.isGood);
+            logAgent(
+                activityId,
+                `review decision submitted (${verdict.isGood ? "approve" : "request changes"})`,
+                label,
+            );
+        } catch (error) {
+            logAgentError(activityId, "review decision not submitted", error, label);
+        }
+    }
 
     return result.usage;
 }

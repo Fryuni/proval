@@ -1,11 +1,14 @@
 import type { AgentTool } from "../../llm/loop.js";
 import type { GitProvider } from "../../../git-provider/types.js";
 
+export type PullRequestVerdict = { isGood: boolean | null };
+
+/** Records the verdict in `verdict`. The caller submits the review decision once the summary is posted. */
 export function evaluatePullRequestTool(
     provider: GitProvider,
     prIid: number,
-    headSha: string,
     isFollowUpReview: boolean,
+    verdict: PullRequestVerdict,
 ): AgentTool {
     return {
         name: "evaluate_pull_request",
@@ -22,18 +25,14 @@ export function evaluatePullRequestTool(
             required: ["isGood"],
         },
         execute: async (args) => {
-            const isGood = args.isGood === true;
-            if (isGood && !isFollowUpReview) {
+            if (typeof args.isGood !== "boolean") {
+                throw new Error("isGood must be a boolean");
+            }
+            verdict.isGood = args.isGood;
+            if (args.isGood && !isFollowUpReview) {
                 await provider.addEmoji({ type: "pull_request", prIid }, "👍");
             }
-            try {
-                await provider.submitPullRequestReviewDecision?.(prIid, headSha, isGood);
-            } catch (error) {
-                // The summary is already posted. Report the rejected decision (for example on the bot's own pull request) as a tool error without failing the review
-                const message = error instanceof Error ? error.message : String(error);
-                return { evaluated: true, isGood, error: `Review decision not submitted: ${message}` };
-            }
-            return { evaluated: true, isGood };
+            return { evaluated: true, isGood: args.isGood };
         },
     };
 }
