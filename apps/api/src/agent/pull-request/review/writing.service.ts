@@ -133,17 +133,16 @@ export async function runReviewWritingAgent(
         onEvent,
     });
 
-    // A run without a summary must fail, so the head is not treated as reviewed
+    // A run without a summary or a verdict must fail, so the head is not treated as reviewed
     if ((result.toolCallCount["post_pull_request_comment"] ?? 0) === 0) {
         throw new Error("Review writing ended without posting the summary comment");
     }
+    if (verdict.isGood === null) {
+        throw new Error("Review writing ended without recording a verdict");
+    }
 
     // Submit the decision only after the summary it points to is posted, and never for a review canceled meanwhile. A refused decision (for example on the bot's own pull request) must not fail the review
-    if (
-        verdict.isGood !== null &&
-        provider.submitPullRequestReviewDecision &&
-        !(await activityService.isCanceledOrFailed(activityId))
-    ) {
+    if (provider.submitPullRequestReviewDecision && !(await activityService.isCanceledOrFailed(activityId))) {
         try {
             await provider.submitPullRequestReviewDecision(prIid, headSha, verdict.isGood);
             logAgent(
