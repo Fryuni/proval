@@ -140,6 +140,18 @@ export const WRITING_EVALUATION_RULE = [
     "Additional Notes and Good points alone are fine for isGood true.",
 ].join("\n");
 
+export const FOLLOW_UP_EVALUATION_RULE = [
+    "## Pull request evaluation (follow-up review)",
+    "",
+    "After post_pull_request_comment, call evaluate_pull_request exactly once.",
+    "The verdict covers the whole pull request at this head, not only this push.",
+    "Set isGood false if you posted any create_single_line_comment or create_multi_line_comment.",
+    "Set isGood false if the summary lists any Main Issue (lines prefixed with 🚨 or ⚫️), including when inline review mode is off.",
+    "Set isGood false if a Main Issue from any earlier Proval review is still unfixed at this head. Check every earlier Proval summary and inline thread with the comment tools, not only the latest summary.",
+    "List each such still open Main Issue in the summary as one short line under Main Issues, so the next review sees it. This overrides the rule to omit unchanged findings. Restate it in the summary only. Do not post a new inline comment for it.",
+    "Set isGood true only when no Main Issue is open. Additional Notes and Good points alone are fine for isGood true.",
+].join("\n");
+
 export const PR_REVIEW_WRITING_USER_PROMPT_HEADER = [
     USER_PROMPT_BASE,
     "Do not publish findings the owner asked you to omit, even if a sub-agent handoff included them.",

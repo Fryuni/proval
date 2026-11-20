@@ -223,6 +223,8 @@ export interface GitProvider {
     createCommentToMultiLine(prIid: number, body: string, position: GitDiffMultiLine): Promise<GitComment>;
     approvePullRequest(prIid: number): Promise<void>;
     unapprovePullRequest(prIid: number): Promise<void>;
+    /** Leave an approve or request changes review on the reviewed head. Only providers that support it implement this. */
+    submitPullRequestReviewDecision?(prIid: number, headSha: string, isApproved: boolean): Promise<void>;
     assignPullRequestReviewer(prIid: number): Promise<void>;
     fetchRepositoryList(): Promise<GitRepositoryListItem[]>;
     fetchRepositoryPath(): Promise<string>;

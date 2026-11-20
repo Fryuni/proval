@@ -1,28 +1,38 @@
 import type { AgentTool } from "../../llm/loop.js";
 import type { GitProvider } from "../../../git-provider/types.js";
 
-export function evaluatePullRequestTool(provider: GitProvider, prIid: number): AgentTool {
+export type PullRequestVerdict = { isGood: boolean | null };
+
+/** Records the verdict in `verdict`. The caller submits the review decision once the summary is posted. */
+export function evaluatePullRequestTool(
+    provider: GitProvider,
+    prIid: number,
+    isFollowUpReview: boolean,
+    verdict: PullRequestVerdict,
+): AgentTool {
     return {
         name: "evaluate_pull_request",
         description:
-            "Record your overall verdict on this first review after post_pull_request_comment. Call exactly once. Set isGood true only when you published no Main Issues (no inline comments and no critical or problem items in the summary). Set isGood false when any Main Issue was published.",
+            "Record your overall verdict on this pull request after post_pull_request_comment. Call exactly once. Set isGood true only when the pull request has no open Main Issues. Set isGood false when any Main Issue is open.",
         parameters: {
             type: "object",
             properties: {
                 isGood: {
                     type: "boolean",
-                    description:
-                        "True when this review has no Main Issues. False when you posted inline Main Issues or listed Main Issues in the summary.",
+                    description: "True when the pull request has no open Main Issues. False otherwise.",
                 },
             },
             required: ["isGood"],
         },
         execute: async (args) => {
-            const isGood = args.isGood === true;
-            if (isGood) {
+            if (typeof args.isGood !== "boolean") {
+                throw new Error("isGood must be a boolean");
+            }
+            verdict.isGood = args.isGood;
+            if (args.isGood && !isFollowUpReview) {
                 await provider.addEmoji({ type: "pull_request", prIid }, "👍");
             }
-            return { evaluated: true, isGood };
+            return { evaluated: true, isGood: args.isGood };
         },
     };
 }

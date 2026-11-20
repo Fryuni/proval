@@ -6,7 +6,7 @@ const SORT = ["List code review findings in order of importance."];
 
 export const INLINE_ENABLED = [
     "Tool intent for publishing:",
-    "- Call create_single_line_comment or create_multi_line_comment for each Main Issue so the finding appears on the exact diff line (why: authors act on anchored comments first).",
+    "- Call create_single_line_comment or create_multi_line_comment for each new Main Issue so the finding appears on the exact diff line (why: authors act on anchored comments first). Main Issues carried over from an earlier Proval review go in the summary only.",
     "- Call post_pull_request_comment exactly once afterward for the summary (why: one top-level overview for readers who skip the diff).",
     ...SORT,
     "Include minor review items in the review summary comment instead of inline comments.",

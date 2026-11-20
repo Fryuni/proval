@@ -4,7 +4,12 @@ import type { Workspace } from "../../../git-provider/workspace.js";
 import { runAgentLoop, type AgentLoopEvent, type LlmSender } from "../../llm/loop";
 import { INLINE_DISABLED, INLINE_ENABLED, SEVERITY } from "../prompt";
 import { buildAuthorMentionPolicy, COMMENT_LANGUAGE_RULE } from "../../shared/prompt";
-import { PR_REVIEW_WRITING_USER_PROMPT_HEADER, WRITING_EVALUATION_RULE, WRITING_WORKFLOW } from "./writing.prompt.js";
+import {
+    FOLLOW_UP_EVALUATION_RULE,
+    PR_REVIEW_WRITING_USER_PROMPT_HEADER,
+    WRITING_EVALUATION_RULE,
+    WRITING_WORKFLOW,
+} from "./writing.prompt.js";
 import { FOLLOW_UP_REVIEW_RULE } from "./follow-up.prompt.js";
 import {
     createMultiLineCommentTool,
@@ -22,6 +27,8 @@ import {
 import { getFileContentTool, globTool, grepTool, listDirectoryTool } from "../../shared/tool";
 import { ActivityService } from "../../../api/activity/activity.service.js";
 import { generateUserPrompt } from "../../../util/user-prompt.js";
+import { logAgent, logAgentError } from "../../../util/log.js";
+import type { PullRequestVerdict } from "../tool/evaluate-pull-request.js";
 import type { ReviewHandoff } from "./handoff.schema.js";
 
 const PRIOR_SUMMARY_MAX_CHARS = 4000;
@@ -49,7 +56,8 @@ export async function runReviewWritingAgent(
 ): Promise<ActivityTokenUsage> {
     const system = [
         WRITING_WORKFLOW,
-        isFollowUpReview ? FOLLOW_UP_REVIEW_RULE : WRITING_EVALUATION_RULE,
+        isFollowUpReview ? FOLLOW_UP_REVIEW_RULE : null,
+        isFollowUpReview ? FOLLOW_UP_EVALUATION_RULE : WRITING_EVALUATION_RULE,
         SEVERITY,
         isInlineReview ? INLINE_ENABLED : INLINE_DISABLED,
         COMMENT_LANGUAGE_RULE,
@@ -74,8 +82,10 @@ export async function runReviewWritingAgent(
     ].filter(Boolean);
 
     const activityService = new ActivityService();
+    const label = `[PR #${prIid}] Writing`;
+    const verdict: PullRequestVerdict = { isGood: null };
 
-    const result = await runAgentLoop(sender, system, promptPartList.join("\n\n"), `[PR #${prIid}] Writing`, {
+    const result = await runAgentLoop(sender, system, promptPartList.join("\n\n"), label, {
         toolList: [
             usePushScope ? getPushChangedFileListTool(workspace) : null,
             usePushScope ? getPushFileDiffTool(workspace) : null,
@@ -115,13 +125,35 @@ export async function runReviewWritingAgent(
         ],
         requiredToolList: [
             postPullRequestCommentTool(provider, prIid, language, activityId),
-            isFollowUpReview ? null : evaluatePullRequestTool(provider, prIid),
+            evaluatePullRequestTool(provider, prIid, isFollowUpReview, verdict),
         ],
         endWhenRequiredToolsCalled: true,
         activityId,
         onUsage: (stepUsage) => activityService.addTokenUsage(activityId, stepUsage),
         onEvent,
     });
+
+    // A run without a summary or a verdict must fail, so the head is not treated as reviewed
+    if ((result.toolCallCount["post_pull_request_comment"] ?? 0) === 0) {
+        throw new Error("Review writing ended without posting the summary comment");
+    }
+    if (verdict.isGood === null) {
+        throw new Error("Review writing ended without recording a verdict");
+    }
+
+    // Submit the decision only after the summary it points to is posted, and never for a review canceled meanwhile. A refused decision (for example on the bot's own pull request) must not fail the review
+    if (provider.submitPullRequestReviewDecision && !(await activityService.isCanceledOrFailed(activityId))) {
+        try {
+            await provider.submitPullRequestReviewDecision(prIid, headSha, verdict.isGood);
+            logAgent(
+                activityId,
+                `review decision submitted (${verdict.isGood ? "approve" : "request changes"})`,
+                label,
+            );
+        } catch (error) {
+            logAgentError(activityId, "review decision not submitted", error, label);
+        }
+    }
 
     return result.usage;
 }

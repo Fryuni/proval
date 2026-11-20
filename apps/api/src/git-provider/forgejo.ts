@@ -865,6 +865,18 @@ export class ForgejoProvider implements GitProvider {
         }
     }
 
+    public async submitPullRequestReviewDecision(prIid: number, headSha: string, isApproved: boolean): Promise<void> {
+        await this.requestJson(`/repos/${this.owner}/${this.repo}/pulls/${prIid}/reviews`, {
+            method: "POST",
+            body: JSON.stringify({
+                event: isApproved ? "APPROVED" : "REQUEST_CHANGES",
+                // Forgejo rejects a request changes review with an empty body
+                body: isApproved ? "" : "Proval found issues to fix before merging. See the review summary.",
+                commit_id: headSha,
+            }),
+        });
+    }
+
     public async assignPullRequestReviewer(prIid: number): Promise<void> {
         const user = await this.fetchCurrentUser();
 
