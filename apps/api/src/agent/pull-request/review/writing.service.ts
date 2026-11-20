@@ -4,7 +4,12 @@ import type { Workspace } from "../../../git-provider/workspace.js";
 import { runAgentLoop, type AgentLoopEvent, type LlmSender } from "../../llm/loop";
 import { INLINE_DISABLED, INLINE_ENABLED, SEVERITY } from "../prompt";
 import { buildAuthorMentionPolicy, COMMENT_LANGUAGE_RULE } from "../../shared/prompt";
-import { PR_REVIEW_WRITING_USER_PROMPT_HEADER, WRITING_EVALUATION_RULE, WRITING_WORKFLOW } from "./writing.prompt.js";
+import {
+    FOLLOW_UP_EVALUATION_RULE,
+    PR_REVIEW_WRITING_USER_PROMPT_HEADER,
+    WRITING_EVALUATION_RULE,
+    WRITING_WORKFLOW,
+} from "./writing.prompt.js";
 import { FOLLOW_UP_REVIEW_RULE } from "./follow-up.prompt.js";
 import {
     createMultiLineCommentTool,
@@ -49,7 +54,8 @@ export async function runReviewWritingAgent(
 ): Promise<ActivityTokenUsage> {
     const system = [
         WRITING_WORKFLOW,
-        isFollowUpReview ? FOLLOW_UP_REVIEW_RULE : WRITING_EVALUATION_RULE,
+        isFollowUpReview ? FOLLOW_UP_REVIEW_RULE : null,
+        isFollowUpReview ? FOLLOW_UP_EVALUATION_RULE : WRITING_EVALUATION_RULE,
         SEVERITY,
         isInlineReview ? INLINE_ENABLED : INLINE_DISABLED,
         COMMENT_LANGUAGE_RULE,
@@ -115,7 +121,7 @@ export async function runReviewWritingAgent(
         ],
         requiredToolList: [
             postPullRequestCommentTool(provider, prIid, language, activityId),
-            isFollowUpReview ? null : evaluatePullRequestTool(provider, prIid),
+            evaluatePullRequestTool(provider, prIid, headSha, isFollowUpReview),
         ],
         endWhenRequiredToolsCalled: true,
         activityId,

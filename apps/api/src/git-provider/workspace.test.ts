@@ -281,12 +281,11 @@ if (process.env.PROVAL_WORKSPACE_TEST_CHILD !== "1") {
                                                 name: "post_pull_request_comment",
                                                 arguments: JSON.stringify({ body: "No issue found" }),
                                             });
-                                            if (!isFollowUpReview)
-                                                toolCallList.push({
-                                                    id: "verdict",
-                                                    name: "evaluate_pull_request",
-                                                    arguments: JSON.stringify({ isGood: true }),
-                                                });
+                                            toolCallList.push({
+                                                id: "verdict",
+                                                name: "evaluate_pull_request",
+                                                arguments: JSON.stringify({ isGood: true }),
+                                            });
                                         }
                                     }
                                     return {
