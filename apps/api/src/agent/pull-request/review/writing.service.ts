@@ -133,9 +133,14 @@ export async function runReviewWritingAgent(
         onEvent,
     });
 
-    // Submit the decision only after the summary it points to is posted. A refused decision (for example on the bot's own pull request) must not fail the review
+    // Submit the decision only after the summary it points to is posted, and never for a review canceled meanwhile. A refused decision (for example on the bot's own pull request) must not fail the review
     const isSummaryPosted = (result.toolCallCount["post_pull_request_comment"] ?? 0) > 0;
-    if (isSummaryPosted && verdict.isGood !== null && provider.submitPullRequestReviewDecision) {
+    if (
+        isSummaryPosted &&
+        verdict.isGood !== null &&
+        provider.submitPullRequestReviewDecision &&
+        !(await activityService.isCanceledOrFailed(activityId))
+    ) {
         try {
             await provider.submitPullRequestReviewDecision(prIid, headSha, verdict.isGood);
             logAgent(

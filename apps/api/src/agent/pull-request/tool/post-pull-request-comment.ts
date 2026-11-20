@@ -27,7 +27,10 @@ export function postPullRequestCommentTool(
             required: ["body"],
         },
         execute: async (args) => {
-            const body = String(args.body);
+            if (typeof args.body !== "string" || !args.body.trim()) {
+                throw new Error("body must be a non empty string");
+            }
+            const body = args.body;
             const comment = await provider.createPullRequestComment(prIid, body);
             await commentService.create(activityId, "comment", comment.id, comment.body);
             for (const flushed of provider.takeFlushedInlineCommentList()) {
